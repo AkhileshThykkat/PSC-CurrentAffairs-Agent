@@ -50,8 +50,15 @@ def parse_published(entry) -> datetime | None:
 def scrape_feeds() -> dict:
     db = SessionLocal()
     stats = {"total_entries": 0, "new_articles": 0, "skipped_duplicates": 0, "errors": 0}
+    seen_urls = set()
+    seen_hashes = set()
 
     try:
+        existing_urls = {u[0] for u in db.query(RawArticle.url).all()}
+        existing_hashes = {h[0] for h in db.query(RawArticle.hash).all()}
+        seen_urls.update(existing_urls)
+        seen_hashes.update(existing_hashes)
+
         for feed_url in RSS_FEEDS:
             try:
                 feed = parse(feed_url)
@@ -70,15 +77,12 @@ def scrape_feeds() -> dict:
 
                     article_hash = compute_hash(title, content)
 
-                    existing = (
-                        db.query(RawArticle)
-                        .filter((RawArticle.url == url) | (RawArticle.hash == article_hash))
-                        .first()
-                    )
-
-                    if existing:
+                    if url in seen_urls or article_hash in seen_hashes:
                         stats["skipped_duplicates"] += 1
                         continue
+
+                    seen_urls.add(url)
+                    seen_hashes.add(article_hash)
 
                     article = RawArticle(
                         title=title,
