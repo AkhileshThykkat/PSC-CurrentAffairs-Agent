@@ -2,21 +2,16 @@ import json
 import logging
 from app.services.llm.client import call_ollama
 from app.services.llm.prompts import build_quiz_prompt
+from app.services.llm.validator import parse_json_lenient
 
 logger = logging.getLogger("psc_agent.quiz.generator")
 
 
 def validate_quiz_response(text: str) -> list[dict]:
-    cleaned = text.strip()
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    if cleaned.startswith("```"):
-        cleaned = cleaned[3:]
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
-    cleaned = cleaned.strip()
+    data = parse_json_lenient(text)
 
-    data = json.loads(cleaned)
+    if data is None:
+        raise ValueError("Could not parse quiz JSON response")
 
     if not isinstance(data, list):
         raise ValueError("Quiz response must be a JSON array")

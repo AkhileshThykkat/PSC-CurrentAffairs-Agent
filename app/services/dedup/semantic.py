@@ -108,3 +108,15 @@ def build_index_from_texts(texts: list[str]):
 
     save_index()
     logger.info(f"Built FAISS index from {len(texts)} texts")
+
+
+def clear_index():
+    global _index, _embeddings
+    _index = None
+    _embeddings = []
+    index_path = settings.faiss_index_path
+    meta_path = index_path + ".meta.npy"
+    for path in [index_path, meta_path]:
+        if os.path.exists(path):
+            os.remove(path)
+    logger.info("FAISS index cleared")

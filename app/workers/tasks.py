@@ -8,7 +8,7 @@ from app.models.processed_article import ProcessedArticle
 from app.models.quiz import Quiz
 from app.services.scraper.rss import scrape_feeds
 from app.services.scraper.html import fetch_article, extract_article_text, extract_image
-from app.services.dedup.semantic import is_semantic_duplicate, add_embedding
+from app.services.dedup.semantic import is_semantic_duplicate, add_embedding, clear_index, build_index_from_texts
 from app.services.llm.validator import process_article
 from app.services.classifier.filter import should_keep
 from app.services.quiz.generator import generate_quiz
@@ -64,17 +64,23 @@ def dedup_task():
 
     try:
         raw_articles = db.query(RawArticle).all()
+        articles_with_content = [a for a in raw_articles if a.content and a.content.strip()]
 
-        for article in raw_articles:
+        clear_index()
+
+        to_remove = []
+        for article in articles_with_content:
             stats["checked"] += 1
-            text = article.title + " " + (article.content or "")[:300]
+            text = article.title + " " + article.content[:300]
 
             if is_semantic_duplicate(text):
-                db.delete(article)
+                to_remove.append(article)
                 stats["removed"] += 1
-                continue
+            else:
+                add_embedding(text)
 
-            add_embedding(text)
+        for article in to_remove:
+            db.delete(article)
 
         db.commit()
         logger.info(f"Dedup complete: {stats}")

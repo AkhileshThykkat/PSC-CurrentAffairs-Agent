@@ -50,13 +50,33 @@ print(f"  Fetched: {fetched}, Errors: {errors}")
 print("\n[3/5] Running deduplication...")
 all_articles = db.query(RawArticle).all()
 removed = 0
-for article in all_articles:
-    text = article.title + " " + (article.content or "")[:300]
-    if is_semantic_duplicate(text):
+
+# Only keep articles that have content (already fetched)
+articles_with_content = [a for a in all_articles if a.content and a.content.strip()]
+
+# Rebuild FAISS index from scratch using only articles with content
+if articles_with_content:
+    from app.services.dedup.semantic import build_index_from_texts, clear_index
+    clear_index()
+
+    # Process in order: add to index, if duplicate found, remove
+    seen_texts = []
+    to_remove = []
+    for article in articles_with_content:
+        text = article.title + " " + article.content[:300]
+        from app.services.dedup.semantic import is_semantic_duplicate, add_embedding
+        if is_semantic_duplicate(text):
+            to_remove.append(article)
+            removed += 1
+        else:
+            add_embedding(text)
+            seen_texts.append(text)
+
+    for article in to_remove:
         db.delete(article)
-        removed += 1
-    else:
-        add_embedding(text)
+else:
+    print("  No articles with content to dedup.")
+
 db.commit()
 print(f"  Removed semantic duplicates: {removed}")
 
