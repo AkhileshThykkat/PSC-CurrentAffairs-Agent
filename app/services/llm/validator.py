@@ -135,7 +135,7 @@ def process_article(article_text: str, max_retries: int = 3) -> dict | None:
         try:
             prompt = build_article_prompt(article_text)
             raw = call_ollama(prompt)
-            response_text = raw.get("response", "")
+            response_text = raw.get("message", {}).get("content", raw.get("response", ""))
             return validate_llm_response(response_text)
         except Exception as e:
             if attempt == max_retries:

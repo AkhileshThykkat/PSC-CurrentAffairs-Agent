@@ -192,12 +192,16 @@ def generate_daily_quiz_task():
             logger.info("No articles available for quiz generation")
             return {"status": "skipped", "reason": "no articles"}
 
-        summaries = "\n\n".join(
-            f"Title: {a.title}\nSummary: {a.summary}\nCategory: {a.category}"
-            for a in articles
-        )
+        articles = [
+            {"title": a.title, "summary": a.summary, "category": a.category}
+            for a in db.query(ProcessedArticle).filter(ProcessedArticle.created_at >= today).all()
+        ]
 
-        quiz_questions = generate_quiz(summaries)
+        if not articles:
+            logger.info("No articles available for quiz generation")
+            return {"status": "skipped", "reason": "no articles"}
+
+        quiz_questions = generate_quiz(articles)
         if not quiz_questions:
             return {"status": "failed", "reason": "LLM generation failed"}
 

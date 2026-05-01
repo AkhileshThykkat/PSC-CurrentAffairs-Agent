@@ -25,29 +25,25 @@ Rules:
 
 QUIZ_PROMPT = """You are a Kerala PSC exam question setter.
 
-Based ONLY on the following news summaries, generate exactly 5 MCQ questions.
+Based ONLY on the following news, generate ONE MCQ question.
 
-News summaries:
+News:
 {summaries}
 
 Rules:
-- Each question must have exactly 4 options labeled "A. ...", "B. ...", "C. ...", "D. ..."
-- Exactly 1 correct answer per question (must match one option exactly)
-- No ambiguous or trick questions
-- Moderate difficulty — suitable for a PSC prelims exam
-- Base questions ONLY on the provided summaries, not general knowledge
-- Each question must test a distinct fact from a different article
-- Use double quotes for all strings. No trailing commas.
+- Generate exactly ONE question
+- 4 options: "A. ...", "B. ...", "C. ...", "D. ..."
+- 1 correct answer matching one option exactly
+- Test a factual detail from the news
+- Use double quotes. No markdown. No code blocks.
 
-Output ONLY a JSON array. No markdown. No code blocks. No backticks. No explanation.
-[
-  {{
-    "question": "...",
-    "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-    "correct_answer": "A. ...",
-    "explanation": "one sentence explanation"
-  }}
-]"""
+Output ONLY a JSON object:
+{{
+  "question": "...",
+  "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+  "correct_answer": "A. ...",
+  "explanation": "one sentence"
+}}"""
 
 
 def build_article_prompt(article_text: str) -> str:
