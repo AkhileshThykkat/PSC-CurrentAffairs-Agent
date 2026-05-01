@@ -13,32 +13,55 @@ VALID_IMPORTANCE = {"HIGH", "MEDIUM", "LOW"}
 
 
 def extract_json_block(text: str) -> str:
+    # Strip markdown code fences
+    text = re.sub(r"```(?:json)?\s*\n?", "", text)
+    text = re.sub(r"```\s*$", "", text)
+
+    # Strip HTML tags if the model outputs HTML
+    if "<" in text and ">" in text:
+        text = re.sub(r"<[^>]+>", "", text)
+
     text = text.strip()
-    match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
+
+    # Find the outermost JSON object or array
     for open_char, close_char in [("{", "}"), ("[", "]")]:
         start = text.find(open_char)
-        end = text.rfind(close_char)
-        if start != -1 and end > start:
-            return text[start : end + 1]
+        if start == -1:
+            continue
+        # Track nesting depth to find the matching close char
+        depth = 0
+        for i, c in enumerate(text[start:], start):
+            if c == open_char:
+                depth += 1
+            elif c == close_char:
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+
     return text
 
 
 def parse_json_lenient(text: str) -> dict | list:
     text = extract_json_block(text)
 
+    # 1. Standard JSON
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
+    # 2. Replace single quotes used as string delimiters (not apostrophes inside strings)
+    # Match single quotes at the start/end of values or keys
     try:
-        fixed = text.replace("'", '"')
+        fixed = re.sub(r"(?<=\s|:|\[|,)'([^']*)'(?=\s|,|\]|\}|:)", r'"\1"', text)
+        # Also handle cases where the whole thing uses single quotes
+        if "'" in fixed and '"' not in fixed:
+            fixed = text.replace("'", '"')
         return json.loads(fixed)
     except (json.JSONDecodeError, ValueError):
         pass
 
+    # 3. Python literal eval (handles single quotes, trailing commas)
     try:
         return ast.literal_eval(text)
     except (ValueError, SyntaxError):
@@ -71,10 +94,13 @@ def fix_key_points(data: dict) -> dict:
 
 
 def validate_llm_response(text: str) -> dict:
+    logger.debug(f"Raw LLM output (first 500 chars): {text[:500]}")
+    logger.debug(f"Raw LLM output length: {len(text)}")
+
     data = parse_json_lenient(text)
 
     if data is None:
-        raise ValueError("Could not parse JSON response")
+        raise ValueError(f"Could not parse JSON response. Raw output: {text[:300]}")
 
     if isinstance(data, list):
         data = data[0] if data else {}
@@ -84,7 +110,7 @@ def validate_llm_response(text: str) -> dict:
 
     missing = REQUIRED_FIELDS - set(data.keys())
     if missing:
-        raise ValueError(f"Missing fields: {missing}")
+        raise ValueError(f"Missing fields: {missing}. Got keys: {list(data.keys())}. Raw: {text[:300]}")
 
     extra = set(data.keys()) - REQUIRED_FIELDS
     for field in extra:
