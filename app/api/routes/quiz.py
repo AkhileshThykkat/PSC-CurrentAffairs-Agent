@@ -10,7 +10,7 @@ from app.schemas.quiz import QuizQuestionResponse, QuizResponse
 
 logger = logging.getLogger("psc_agent.api.quiz")
 
-router = APIRouter(prefix="/quiz", tags=["quiz"])
+router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
 
 def quiz_to_response(q: Quiz) -> QuizQuestionResponse:

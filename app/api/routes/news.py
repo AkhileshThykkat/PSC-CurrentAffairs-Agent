@@ -11,7 +11,7 @@ from app.schemas.article import ArticleResponse, ArticleListResponse
 
 logger = logging.getLogger("psc_agent.api.news")
 
-router = APIRouter(prefix="/news", tags=["news"])
+router = APIRouter(prefix="/api/news", tags=["news"])
 
 
 def article_to_response(pa: ProcessedArticle, ra: RawArticle) -> ArticleResponse:

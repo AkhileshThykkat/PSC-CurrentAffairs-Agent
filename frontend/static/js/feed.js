@@ -73,7 +73,7 @@ async function loadArticles() {
     const noArticles = document.getElementById("no-articles");
 
     try {
-        const response = await fetch("/news/today");
+        const response = await fetch("/api/news/today");
         if (!response.ok) throw new Error("Failed to fetch");
 
         const data = await response.json();

@@ -34,7 +34,7 @@ async function loadArticles() {
     const category = document.getElementById("category-filter").value;
     const importance = document.getElementById("importance-filter").value;
 
-    let url = `/news?days=${currentDays}`;
+    let url = `/api/news?days=${currentDays}`;
     if (category) url += `&category=${category}`;
     if (importance) url += `&importance=${importance}`;
 

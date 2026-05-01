@@ -97,7 +97,7 @@ async function loadQuiz() {
     const container = document.getElementById("quiz-container");
 
     try {
-        const response = await fetch("/quiz/today");
+        const response = await fetch("/api/quiz/today");
         if (!response.ok) {
             loading.classList.add("hidden");
             noQuiz.classList.remove("hidden");

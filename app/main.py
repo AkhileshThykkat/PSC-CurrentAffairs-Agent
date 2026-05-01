@@ -32,11 +32,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(news_router)
-app.include_router(quiz_router)
-
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
 
 @app.get("/")
 async def serve_home():
@@ -51,3 +46,9 @@ async def serve_quiz():
 @app.get("/archive")
 async def serve_archive():
     return FileResponse("frontend/archive.html")
+
+
+app.include_router(news_router)
+app.include_router(quiz_router)
+
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
