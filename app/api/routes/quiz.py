@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta, date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -25,7 +25,7 @@ def quiz_to_response(q: Quiz) -> QuizQuestionResponse:
 
 @router.get("/today", response_model=QuizResponse)
 def get_today_quiz(db: Session = Depends(get_db)):
-    today = datetime.utcnow().date()
+    today = date.today()
     quizzes = (
         db.query(Quiz)
         .filter(Quiz.date == today)
@@ -45,7 +45,7 @@ def get_quiz(
     days: int = Query(default=1, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
-    cutoff = datetime.utcnow().date() - timedelta(days=days - 1)
+    cutoff = date.today() - timedelta(days=days - 1)
     quizzes = (
         db.query(Quiz)
         .filter(Quiz.date >= cutoff)
