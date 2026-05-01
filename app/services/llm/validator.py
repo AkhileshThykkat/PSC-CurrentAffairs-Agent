@@ -79,6 +79,9 @@ def validate_llm_response(text: str) -> dict:
     if isinstance(data, list):
         data = data[0] if data else {}
 
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected dict, got {type(data).__name__}: {str(data)[:200]}")
+
     missing = REQUIRED_FIELDS - set(data.keys())
     if missing:
         raise ValueError(f"Missing fields: {missing}")
@@ -101,7 +104,7 @@ def validate_llm_response(text: str) -> dict:
     return data
 
 
-def process_article(article_text: str, max_retries: int = 2) -> dict | None:
+def process_article(article_text: str, max_retries: int = 3) -> dict | None:
     for attempt in range(max_retries + 1):
         try:
             prompt = build_article_prompt(article_text)
