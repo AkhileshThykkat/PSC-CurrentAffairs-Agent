@@ -10,7 +10,7 @@ from app.services.scraper.rss import scrape_feeds
 from app.services.scraper.html import fetch_article, extract_article_text, extract_image
 from app.services.dedup.semantic import is_semantic_duplicate, add_embedding, clear_index, build_index_from_texts
 from app.services.llm.validator import process_article
-from app.services.classifier.filter import should_keep
+from app.services.classifier.filter import compute_psc_score, determine_psc_category, should_keep
 from app.services.quiz.generator import generate_quiz
 
 logger = logging.getLogger("psc_agent.workers.tasks")
@@ -96,8 +96,7 @@ def dedup_task():
 @celery_app.task
 def process_articles_task():
     db = SessionLocal()
-    stats = {"processed": 0, "skipped": 0, "errors": 0}
-    india_articles = []
+    stats = {"processed": 0, "skipped": 0, "filtered": 0, "errors": 0}
 
     try:
         unprocessed = (
@@ -115,6 +114,16 @@ def process_articles_task():
 
                 if not result:
                     stats["skipped"] += 1
+                    continue
+
+                psc_score, psc_topics = compute_psc_score(article.title, article.content or "")
+                if psc_topics:
+                    result["category"] = determine_psc_category(psc_topics)
+                result["psc_score"] = psc_score
+                result["psc_topics"] = psc_topics
+
+                if not should_keep(result, []):
+                    stats["filtered"] += 1
                     continue
 
                 image_url = None
@@ -138,27 +147,11 @@ def process_articles_task():
                 )
                 db.add(processed)
                 db.flush()
-
-                if result["category"] == "India":
-                    india_articles.append({
-                        "processed_id": processed.id,
-                        "importance": result["importance"],
-                    })
-
                 stats["processed"] += 1
 
             except Exception as e:
                 logger.error(f"Error processing article {article.id}: {e}")
                 stats["errors"] += 1
-
-        importance_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
-        sorted_india = sorted(india_articles, key=lambda x: importance_rank.get(x["importance"], 0), reverse=True)
-        keep_count = max(1, int(len(sorted_india) * 0.70))
-
-        if len(sorted_india) > keep_count:
-            to_remove_ids = [a["processed_id"] for a in sorted_india[keep_count:]]
-            for pid in to_remove_ids:
-                db.query(ProcessedArticle).filter(ProcessedArticle.id == pid).delete()
 
         db.commit()
         logger.info(f"Article processing complete: {stats}")
@@ -174,7 +167,7 @@ def process_articles_task():
 @celery_app.task
 def generate_daily_quiz_task():
     db = SessionLocal()
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
 
     try:
         existing = db.query(Quiz).filter(Quiz.date == today).first()
@@ -184,7 +177,6 @@ def generate_daily_quiz_task():
 
         articles = (
             db.query(ProcessedArticle)
-            .filter(ProcessedArticle.created_at >= today)
             .all()
         )
 
@@ -192,16 +184,12 @@ def generate_daily_quiz_task():
             logger.info("No articles available for quiz generation")
             return {"status": "skipped", "reason": "no articles"}
 
-        articles = [
+        article_dicts = [
             {"title": a.title, "summary": a.summary, "category": a.category}
-            for a in db.query(ProcessedArticle).filter(ProcessedArticle.created_at >= today).all()
+            for a in articles
         ]
 
-        if not articles:
-            logger.info("No articles available for quiz generation")
-            return {"status": "skipped", "reason": "no articles"}
-
-        quiz_questions = generate_quiz(articles)
+        quiz_questions = generate_quiz(article_dicts)
         if not quiz_questions:
             return {"status": "failed", "reason": "LLM generation failed"}
 

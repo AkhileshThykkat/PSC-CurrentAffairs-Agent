@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from app.api.deps import get_db
 from app.models.quiz import Quiz
+from app.models.processed_article import ProcessedArticle
 from app.schemas.quiz import QuizQuestionResponse, QuizResponse
+from app.services.quiz.generator import generate_quiz
 
 logger = logging.getLogger("psc_agent.api.quiz")
 
@@ -20,6 +22,47 @@ def quiz_to_response(q: Quiz) -> QuizQuestionResponse:
         options=json.loads(q.options),
         correct_answer=q.correct_answer,
         explanation=q.explanation,
+    )
+
+
+@router.post("/regenerate", response_model=QuizResponse)
+def regenerate_quiz(db: Session = Depends(get_db)):
+    today = date.today()
+
+    db.query(Quiz).filter(Quiz.date == today).delete()
+    db.commit()
+
+    articles = db.query(ProcessedArticle).all()
+    if not articles:
+        raise HTTPException(status_code=404, detail="No processed articles available for quiz generation")
+
+    article_dicts = [
+        {"title": a.title, "summary": a.summary, "category": a.category}
+        for a in articles
+    ]
+
+    quiz_questions = generate_quiz(article_dicts)
+    if not quiz_questions:
+        raise HTTPException(status_code=500, detail="Failed to generate quiz questions from LLM")
+
+    saved_quizzes = []
+    for q in quiz_questions:
+        quiz = Quiz(
+            question=q["question"],
+            options=json.dumps(q["options"]),
+            correct_answer=q["correct_answer"],
+            explanation=q["explanation"],
+            date=today,
+        )
+        db.add(quiz)
+        saved_quizzes.append(quiz)
+    db.commit()
+
+    logger.info(f"Regenerated {len(quiz_questions)} quiz questions for {today}")
+
+    return QuizResponse(
+        date=today.isoformat(),
+        questions=[quiz_to_response(q) for q in saved_quizzes],
     )
 
 

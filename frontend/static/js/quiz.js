@@ -8,8 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const submitBtn = document.getElementById("submit-btn");
     const nextBtn = document.getElementById("next-btn");
+    const regenBtn = document.getElementById("regenerate-btn");
     if (submitBtn) submitBtn.addEventListener("click", submitAnswer);
     if (nextBtn) nextBtn.addEventListener("click", nextQuestion);
+    if (regenBtn) regenBtn.addEventListener("click", regenerateQuiz);
+
+    const takeAnotherBtn = document.getElementById("take-another-btn");
+    if (takeAnotherBtn) takeAnotherBtn.addEventListener("click", regenerateQuiz);
 
     document.getElementById("options-container").addEventListener("click", (e) => {
         const btn = e.target.closest(".option-btn");
@@ -144,5 +149,53 @@ async function loadQuiz() {
         loading.classList.add("hidden");
         noQuiz.textContent = "Failed to load quiz. Please try again.";
         noQuiz.classList.remove("hidden");
+    }
+}
+
+async function regenerateQuiz() {
+    const regenBtn = document.getElementById("regenerate-btn");
+    const loading = document.getElementById("loading");
+    const container = document.getElementById("quiz-container");
+    const noQuiz = document.getElementById("no-quiz");
+
+    regenBtn.disabled = true;
+    regenBtn.textContent = "Generating...";
+
+    try {
+        const response = await fetch("/api/quiz/regenerate", { method: "POST" });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            regenBtn.textContent = "Regenerate";
+            regenBtn.disabled = false;
+            alert(errData.detail || "Failed to regenerate quiz.");
+            return;
+        }
+
+        const data = await response.json();
+        questions = data.questions;
+        currentQuestion = 0;
+        score = 0;
+        selectedOption = null;
+
+        document.getElementById("answer-reveal").classList.add("hidden");
+        document.getElementById("submit-btn").classList.remove("hidden");
+        document.getElementById("submit-btn").disabled = true;
+        document.getElementById("next-btn").classList.add("hidden");
+        document.getElementById("score-card").classList.add("hidden");
+        container.classList.remove("hidden");
+
+        document.getElementById("quiz-date").textContent = new Date(data.date).toLocaleDateString("en-IN", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+
+        renderQuestion();
+    } catch (err) {
+        alert("Failed to regenerate quiz. Please try again.");
+    } finally {
+        regenBtn.textContent = "Regenerate";
+        regenBtn.disabled = false;
     }
 }

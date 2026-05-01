@@ -8,14 +8,14 @@ from app.services.scraper.rss import scrape_feeds
 from app.services.scraper.html import fetch_article, extract_article_text, extract_image
 from app.services.dedup.semantic import is_semantic_duplicate, add_embedding
 from app.services.llm.validator import process_article
-from app.services.classifier.filter import should_keep
+from app.services.classifier.filter import compute_psc_score, determine_psc_category, should_keep
 from app.services.quiz.generator import generate_quiz
 from app.db.session import SessionLocal
 from app.models.raw_article import RawArticle
 from app.models.processed_article import ProcessedArticle
 from app.models.quiz import Quiz
 import json
-from datetime import datetime
+from datetime import datetime, timezone, date
 
 init_db()
 
@@ -80,7 +80,7 @@ else:
 db.commit()
 print(f"  Removed semantic duplicates: {removed}")
 
-print("\n[4/5] Processing articles with LLM...")
+print("\n[4/5] Processing articles with PSC relevance scoring...")
 unprocessed = (
     db.query(RawArticle)
     .outerjoin(ProcessedArticle, RawArticle.id == ProcessedArticle.raw_id)
@@ -90,14 +90,25 @@ unprocessed = (
 )
 
 processed_count = 0
+filtered_count = 0
 skipped_count = 0
-india_articles = []
+all_processed_articles = []
 
 for article in unprocessed:
     text = article.title + "\n\n" + article.content
     result = process_article(text)
     if not result:
         skipped_count += 1
+        continue
+
+    psc_score, psc_topics = compute_psc_score(article.title, article.content or "")
+    if psc_topics:
+        result["category"] = determine_psc_category(psc_topics)
+    result["psc_score"] = psc_score
+    result["psc_topics"] = psc_topics
+
+    if not should_keep(result, []):
+        filtered_count += 1
         continue
 
     image_url = None
@@ -120,35 +131,29 @@ for article in unprocessed:
     )
     db.add(processed)
     db.flush()
+    all_processed_articles.append({
+        "title": result["title"],
+        "summary": result["summary"],
+        "category": result["category"],
+        "psc_score": psc_score,
+        "psc_topics": psc_topics,
+    })
     processed_count += 1
 
-    if result["category"] == "India":
-        india_articles.append({"processed_id": processed.id, "importance": result["importance"]})
-
-importance_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
-sorted_india = sorted(india_articles, key=lambda x: importance_rank.get(x["importance"], 0), reverse=True)
-keep_count = max(1, int(len(sorted_india) * 0.70))
-
-if len(sorted_india) > keep_count:
-    for item in sorted_india[keep_count:]:
-        db.query(ProcessedArticle).filter(ProcessedArticle.id == item["processed_id"]).delete()
-
 db.commit()
-print(f"  Processed: {processed_count}, Skipped: {skipped_count}")
+print(f"  Processed: {processed_count}, Filtered (low PSC relevance): {filtered_count}, LLM skipped: {skipped_count}")
+if all_processed_articles:
+    print(f"  Topics covered: {', '.join(set(t for a in all_processed_articles for t in a['psc_topics']))}")
 
 print("\n[5/5] Generating daily quiz...")
-today = datetime.utcnow().date()
+today = date.today()
 existing_quiz = db.query(Quiz).filter(Quiz.date == today).first()
 
 if existing_quiz:
     print("  Quiz already exists for today, skipping.")
 else:
-    articles = db.query(ProcessedArticle).filter(ProcessedArticle.created_at >= today).all()
-    if articles:
-        summaries = "\n\n".join(
-            f"Title: {a.title}\nSummary: {a.summary}\nCategory: {a.category}" for a in articles
-        )
-        quiz_questions = generate_quiz(summaries)
+    if all_processed_articles:
+        quiz_questions = generate_quiz(all_processed_articles)
         if quiz_questions:
             for q in quiz_questions:
                 quiz = Quiz(
