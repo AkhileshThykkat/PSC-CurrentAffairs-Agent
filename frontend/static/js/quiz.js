@@ -5,13 +5,29 @@ let selectedOption = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     loadQuiz();
+
+    const submitBtn = document.getElementById("submit-btn");
+    const nextBtn = document.getElementById("next-btn");
+    if (submitBtn) submitBtn.addEventListener("click", submitAnswer);
+    if (nextBtn) nextBtn.addEventListener("click", nextQuestion);
+
+    document.getElementById("options-container").addEventListener("click", (e) => {
+        const btn = e.target.closest(".option-btn");
+        if (!btn || btn.disabled) return;
+        const idx = parseInt(btn.dataset.index);
+        selectOption(idx);
+    });
 });
 
 function selectOption(index) {
     selectedOption = index;
     const buttons = document.querySelectorAll(".option-btn");
     buttons.forEach((btn, i) => {
-        btn.classList.toggle("selected", i === index);
+        if (i === index) {
+            btn.classList.add("ring-2", "ring-green-600", "bg-green-50");
+        } else {
+            btn.classList.remove("ring-2", "ring-green-600", "bg-green-50");
+        }
     });
     document.getElementById("submit-btn").disabled = false;
 }
@@ -24,12 +40,12 @@ function submitAnswer() {
     const buttons = document.querySelectorAll(".option-btn");
 
     buttons.forEach((btn, i) => {
-        btn.classList.remove("selected");
-        btn.onclick = null;
+        btn.disabled = true;
+        btn.classList.remove("ring-2", "ring-green-600", "bg-green-50");
         if (question.options[i] === question.correct_answer) {
-            btn.classList.add("correct");
+            btn.classList.add("bg-green-100", "border-green-600");
         } else if (i === selectedOption && !isCorrect) {
-            btn.classList.add("incorrect");
+            btn.classList.add("bg-red-100", "border-red-400");
         }
     });
 
@@ -52,6 +68,7 @@ function nextQuestion() {
 
     document.getElementById("answer-reveal").classList.add("hidden");
     document.getElementById("submit-btn").classList.remove("hidden");
+    document.getElementById("submit-btn").disabled = true;
     document.getElementById("next-btn").classList.add("hidden");
     selectedOption = null;
 
@@ -80,15 +97,15 @@ function renderQuestion() {
     document.getElementById("progress-bar").style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
 
     const optionsContainer = document.getElementById("options-container");
-    optionsContainer.innerHTML = question.options.map((option, i) => `
-        <button class="option-btn" onclick="selectOption(${i})">${escapeHtml(option)}</button>
-    `).join("");
-}
-
-function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
+    optionsContainer.innerHTML = "";
+    question.options.forEach((option, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "option-btn cursor-pointer border border-slate-300 rounded-lg px-4 py-3 text-left text-sm hover:bg-slate-50 transition-colors w-full";
+        btn.dataset.index = i;
+        btn.textContent = option;
+        optionsContainer.appendChild(btn);
+    });
 }
 
 async function loadQuiz() {
@@ -129,10 +146,3 @@ async function loadQuiz() {
         noQuiz.classList.remove("hidden");
     }
 }
-
-window.selectOption = selectOption;
-window.submitAnswer = submitAnswer;
-window.nextQuestion = nextQuestion;
-
-document.getElementById("submit-btn").addEventListener("click", submitAnswer);
-document.getElementById("next-btn").addEventListener("click", nextQuestion);

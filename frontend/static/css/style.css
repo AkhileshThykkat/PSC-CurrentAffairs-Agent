@@ -36,11 +36,11 @@
 }
 
 .option-btn {
-    @apply w-full text-left px-4 py-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors text-sm;
+    @apply w-full text-left px-4 py-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors text-sm cursor-pointer;
 }
 
-.option-btn.selected {
-    @apply border-green-700 bg-green-50;
+.option-btn:hover {
+    border-color: #15803d;
 }
 
 .option-btn.correct {
