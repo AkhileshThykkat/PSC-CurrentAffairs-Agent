@@ -1,0 +1,74 @@
+.skeleton-card {
+    @apply bg-slate-100 rounded-xl p-4 animate-pulse;
+    height: 280px;
+}
+
+.skeleton-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+}
+
+.article-card {
+    @apply bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-300;
+}
+
+.badge-kerala {
+    @apply bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.badge-india {
+    @apply bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.badge-international {
+    @apply bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.badge-high {
+    @apply bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.badge-medium {
+    @apply bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.badge-low {
+    @apply bg-slate-100 text-slate-600 text-xs font-medium px-2 py-1 rounded-full;
+}
+
+.option-btn {
+    @apply w-full text-left px-4 py-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors text-sm;
+}
+
+.option-btn.selected {
+    @apply border-green-700 bg-green-50;
+}
+
+.option-btn.correct {
+    @apply border-green-600 bg-green-100;
+}
+
+.option-btn.incorrect {
+    @apply border-red-400 bg-red-50;
+}
+
+.key-points-list {
+    @apply text-sm text-slate-600 space-y-1 mt-3;
+}
+
+.key-points-list li {
+    @apply list-disc list-inside;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

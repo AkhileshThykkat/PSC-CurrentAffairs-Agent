@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSC Current Affairs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-white text-slate-800">
+    <header class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <a href="/" class="text-xl font-bold text-green-700">PSC Current Affairs</a>
+                <nav class="flex gap-4 text-sm">
+                    <a href="/" class="text-green-700 font-medium">Today</a>
+                    <a href="/quiz" class="text-slate-600 hover:text-green-700">Quiz</a>
+                    <a href="/archive" class="text-slate-600 hover:text-green-700">Archive</a>
+                </nav>
+            </div>
+            <p class="text-xs text-slate-500 mt-1" id="current-date"></p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        <div id="loading" class="skeleton-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+        <div id="articles-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <p id="no-articles" class="hidden text-center text-slate-500 py-12">No articles yet. Run the scraper to get started.</p>
+    </main>
+
+    <script src="/static/js/feed.js"></script>
+</body>
+</html>
