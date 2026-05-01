@@ -1,6 +1,10 @@
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 from sqlalchemy import Column, Integer, String, DateTime, Date
 from app.db.base import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Quiz(Base):
@@ -12,4 +16,4 @@ class Quiz(Base):
     correct_answer = Column(String, nullable=False)
     explanation = Column(String, nullable=False)
     date = Column(Date, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)

@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -31,13 +31,22 @@ def article_to_response(pa: ProcessedArticle, ra: RawArticle) -> ArticleResponse
     )
 
 
+def today_start() -> datetime:
+    now = datetime.now(timezone.utc)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 @router.get("/today", response_model=ArticleListResponse)
 def get_today_news(db: Session = Depends(get_db)):
-    today = datetime.utcnow().date()
+    cutoff = today_start()
     articles = (
         db.query(ProcessedArticle, RawArticle)
         .join(RawArticle, ProcessedArticle.raw_id == RawArticle.id)
-        .filter(ProcessedArticle.created_at >= today)
+        .filter(ProcessedArticle.created_at >= cutoff)
         .order_by(desc(ProcessedArticle.created_at))
         .all()
     )
@@ -54,7 +63,7 @@ def get_news(
     importance: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = now_utc() - timedelta(days=days)
     query = (
         db.query(ProcessedArticle, RawArticle)
         .join(RawArticle, ProcessedArticle.raw_id == RawArticle.id)

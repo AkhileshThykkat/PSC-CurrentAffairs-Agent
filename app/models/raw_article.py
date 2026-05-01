@@ -1,6 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime
 from app.db.base import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class RawArticle(Base):
@@ -13,4 +17,4 @@ class RawArticle(Base):
     url = Column(String, nullable=False, unique=True)
     published_at = Column(DateTime, nullable=True)
     hash = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
